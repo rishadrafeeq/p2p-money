@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model RegistrationAttempt {
+  id         String   @id @default(cuid())
+  mobile     String
+  password   String
+  inviteCode String?
+  otp        String?
+  status     String   @default("otp_requested")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  mobile    String
+  password  String
+  createdAt DateTime @default(now())
+}
