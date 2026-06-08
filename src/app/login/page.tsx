@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AuthCard from "@/components/AuthCard";
 import PasswordInput from "@/components/PasswordInput";
 import GradientButton from "@/components/GradientButton";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,7 +42,12 @@ export default function LoginPage() {
         return;
       }
 
-      setMessage("Login submitted successfully");
+      if (data.redirect) {
+        router.push(data.redirect);
+        router.refresh();
+        return;
+      }
+      setMessage("Login successful");
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -64,6 +71,9 @@ export default function LoginPage() {
         </div>
 
         <PasswordInput value={password} onChange={setPassword} />
+        <p className="text-xs text-slate-400 mb-4 -mt-2">
+          Password is not case-sensitive (ABC and abc work the same).
+        </p>
 
         {error && (
           <p className="text-red-500 text-sm mb-4 text-center">{error}</p>

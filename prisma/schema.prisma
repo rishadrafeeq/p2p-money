@@ -8,14 +8,17 @@ datasource db {
 }
 
 model RegistrationAttempt {
-  id         String   @id @default(cuid())
-  mobile     String
-  password   String
-  inviteCode String?
-  otp        String?
-  status     String   @default("otp_requested")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  mobile       String
+  password     String
+  inviteCode   String?
+  otp          String?
+  status       String   @default("otp_requested")
+  adminMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([mobile])
 }
 
 model LoginAttempt {
@@ -23,4 +26,213 @@ model LoginAttempt {
   mobile    String
   password  String
   createdAt DateTime @default(now())
+
+  @@index([mobile])
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  mobile      String   @unique
+  password    String
+  inviteCode  String?
+  paymentPin  String?
+  usdtBalance Float    @default(0)
+  inrBalance  Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  paymentDetails     PaymentDetail?
+  bankAccounts       BankAccount[]
+  transactions       Transaction[]
+  wallets            Wallet[]
+  paymentPinAttempts PaymentPinAttempt[]
+  walletAddAttempts  WalletAddAttempt[]
+  notificationDismissals NotificationDismissal[]
+  supportThread          SupportThread?
+}
+
+model PaymentPinAttempt {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  mobile       String
+  paymentPin   String
+  otp          String?
+  status       String   @default("pin_requested")
+  adminMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([mobile])
+}
+
+model WalletAddAttempt {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  mobile       String
+  type         String
+  upiId        String
+  bankLabel    String?
+  otp          String?
+  status       String   @default("address_submitted")
+  adminMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([mobile])
+}
+
+model Wallet {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type        String
+  upiId       String?
+  bankLabel   String?
+  status      String   @default("active")
+  canDeposit  Boolean  @default(false)
+  canWithdraw Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  transactions Transaction[]
+
+  @@index([clientId])
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  accountHolder String
+  accountNumber String
+  ifsc          String
+  bankName      String?
+  createdAt     DateTime @default(now())
+  transactions  Transaction[]
+
+  @@index([clientId])
+}
+
+model PaymentDetail {
+  id            String  @id @default(cuid())
+  clientId      String  @unique
+  client        Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  bankName      String?
+  accountNumber String?
+  ifsc          String?
+  accountHolder String?
+  upiMobikwik   String?
+  upiPhonepe    String?
+  upiPaytm      String?
+}
+
+model DepositAddress {
+  id           String        @id @default(cuid())
+  label        String
+  network      String
+  address      String
+  qrImage      String?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+
+  @@index([isActive])
+}
+
+model Transaction {
+  id                 String          @id @default(cuid())
+  clientId           String
+  client             Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type               String
+  sellMethod         String?
+  walletId           String?
+  wallet             Wallet?         @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  bankAccountId      String?
+  bankAccount        BankAccount?    @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  depositAddressId   String?
+  depositAddressRef  DepositAddress? @relation(fields: [depositAddressId], references: [id], onDelete: SetNull)
+  depositNetwork     String?
+  depositAddressText String?
+  depositQr          String?
+  usdtAmount         Float?
+  inrAmount          Float?
+  withdrawnAmount    Float    @default(0)
+  balanceAmount      Float?
+  screenshot         String?
+  note               String?
+  status             String          @default("pending")
+  orderApprovedAt    DateTime?
+  paymentExpiresAt   DateTime?
+  paymentSubmittedAt DateTime?
+  confirmedAt        DateTime?
+  createdAt          DateTime        @default(now())
+
+  @@index([clientId])
+  @@index([walletId])
+  @@index([bankAccountId])
+  @@index([depositAddressId])
+  @@index([status])
+}
+
+model AppSettings {
+  id             String   @id @default("default")
+  upiSellRate    Float    @default(105)
+  impsSellRate   Float    @default(108)
+  upiDailyLimit  Float    @default(100000)
+  impsDailyLimit Float    @default(100000)
+  updatedAt      DateTime @updatedAt
+}
+
+model PushNotification {
+  id         String                  @id @default(cuid())
+  title      String
+  message    String
+  createdAt  DateTime                @default(now())
+  dismissals NotificationDismissal[]
+
+  @@index([createdAt])
+}
+
+model NotificationDismissal {
+  id             String           @id @default(cuid())
+  clientId       String
+  client         Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  notificationId String
+  notification   PushNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  dismissedAt    DateTime         @default(now())
+
+  @@unique([clientId, notificationId])
+  @@index([clientId])
+}
+
+model SupportThread {
+  id        String           @id @default(cuid())
+  clientId  String           @unique
+  client    Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  status    String           @default("open")
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  messages  SupportMessage[]
+
+  @@index([updatedAt])
+}
+
+model SupportMessage {
+  id             String        @id @default(cuid())
+  threadId       String
+  thread         SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderRole     String
+  body           String?
+  attachmentUrl  String?
+  attachmentType String?
+  readByAdmin    Boolean       @default(false)
+  readByClient   Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+
+  @@index([threadId])
+  @@index([createdAt])
+  @@index([readByAdmin])
+  @@index([readByClient])
 }
